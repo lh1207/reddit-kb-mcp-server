@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import sys
+from typing import Annotated
+
+from fastmcp.exceptions import ToolError
+from pydantic import Field
+from typing_extensions import TypedDict
 
 from lib.chroma import get_collection
 from lib.embeddings import embed
@@ -35,43 +40,66 @@ def _normalize(kind: str, data: dict) -> tuple[str, dict]:
     return text, metadata
 
 
-def ingest_saved(limit: int | None = None) -> dict:
-    """Fetch the user's saved posts/comments, embed new ones, add them to ChromaDB, and
-    return ingest stats."""
+class IngestStats(TypedDict):
+    """Counts from one ingest_saved run."""
+
+    ingested: int
+    skipped: int
+    errors: int
+    total_seen: int
+
+
+def ingest_saved(
+    limit: Annotated[
+        int | None,
+        Field(ge=1, description="Max saved items to pull, newest first; omit for all"),
+    ] = None,
+) -> IngestStats:
+    """Pull the user's saved posts/comments from Reddit and embed the new ones into ChromaDB.
+
+    Fetches the saved listing newest-first (Reddit caps it at roughly the most recent
+    ~1000 items), skips items already in the index (deduped by id), and embeds and stores
+    the rest. Safe to re-run at any time — call this to refresh the local index before
+    search_saved if it looks empty or stale. Returns counts of ingested/skipped/errored
+    items. Raises ToolError if the Reddit session cookie is missing or has expired.
+    """
     collection = get_collection()
 
     ingested = skipped = errors = total_seen = 0
 
-    for child in get_saved_items(limit):
-        total_seen += 1
-        try:
-            data = child["data"]
-            fullname = data["name"]
+    try:
+        for child in get_saved_items(limit):
+            total_seen += 1
+            try:
+                data = child["data"]
+                fullname = data["name"]
 
-            if collection.get(ids=[fullname])["ids"]:
-                skipped += 1
-                continue
+                if collection.get(ids=[fullname])["ids"]:
+                    skipped += 1
+                    continue
 
-            text, metadata = _normalize(child.get("kind", ""), data)
-            vector = embed(text)
-            collection.add(
-                ids=[fullname],
-                embeddings=[vector],
-                metadatas=[metadata],
-                documents=[text],
-            )
-            ingested += 1
-        except Exception as exc:
-            item_id = child.get("data", {}).get("name", "<unknown>")
-            print(
-                f"ingest_saved: error on item {item_id}: {type(exc).__name__}: {exc}",
-                file=sys.stderr,
-            )
-            errors += 1
+                text, metadata = _normalize(child.get("kind", ""), data)
+                vector = embed(text)
+                collection.add(
+                    ids=[fullname],
+                    embeddings=[vector],
+                    metadatas=[metadata],
+                    documents=[text],
+                )
+                ingested += 1
+            except Exception as exc:
+                item_id = child.get("data", {}).get("name", "<unknown>")
+                print(
+                    f"ingest_saved: error on item {item_id}: {type(exc).__name__}: {exc}",
+                    file=sys.stderr,
+                )
+                errors += 1
+    except RuntimeError as exc:
+        raise ToolError(f"{exc} — refresh REDDIT_SESSION_COOKIE in .env") from exc
 
-    return {
-        "ingested": ingested,
-        "skipped": skipped,
-        "errors": errors,
-        "total_seen": total_seen,
-    }
+    return IngestStats(
+        ingested=ingested,
+        skipped=skipped,
+        errors=errors,
+        total_seen=total_seen,
+    )
