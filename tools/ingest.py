@@ -36,7 +36,8 @@ def _normalize(kind: str, data: dict) -> tuple[str, dict]:
 
 
 def ingest_saved(limit: int | None = None) -> dict:
-    """Fetch the user's saved posts/comments, embed new ones, add them to ChromaDB, and return ingest stats."""
+    """Fetch the user's saved posts/comments, embed new ones, add them to ChromaDB, and
+    return ingest stats."""
     collection = get_collection()
 
     ingested = skipped = errors = total_seen = 0

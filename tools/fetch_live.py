@@ -1,4 +1,5 @@
-"""Tools: live Reddit lookups (fetch a thread, search Reddit) via the cookie-auth old.reddit JSON listing."""
+"""Tools: live Reddit lookups (fetch a thread, search Reddit) via the cookie-auth
+old.reddit JSON listing."""
 
 from __future__ import annotations
 

@@ -10,7 +10,8 @@ if TYPE_CHECKING:
 
 
 def get_collection() -> chromadb.Collection:
-    """Open (or create) the persistent reddit-kb collection at CHROMA_PATH, cosine space, no embedding function attached."""
+    """Open (or create) the persistent reddit-kb collection at CHROMA_PATH, cosine space,
+    no embedding function attached."""
     chroma_path = os.environ.get("CHROMA_PATH", "./store/chroma")
     name = os.environ.get("COLLECTION_NAME", "reddit_saved")
 

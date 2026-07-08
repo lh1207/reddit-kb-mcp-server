@@ -7,7 +7,8 @@ from lib.embeddings import embed
 
 
 def search_saved(query: str, limit: int = 10) -> list[dict]:
-    """Embed the query and return the top matching saved posts/comments from ChromaDB, closest first."""
+    """Embed the query and return the top matching saved posts/comments from ChromaDB,
+    closest first."""
     collection = get_collection()
 
     n_results = min(limit, collection.count())
@@ -30,6 +31,7 @@ def search_saved(query: str, limit: int = 10) -> list[dict]:
         response["metadatas"][0],
         response["documents"][0],
         response["distances"][0],
+        strict=False,
     ):
         results.append(
             {
