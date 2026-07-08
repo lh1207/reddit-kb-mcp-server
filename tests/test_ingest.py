@@ -133,3 +133,22 @@ def test_ingest_saved_generator_runtime_error_becomes_tool_error(monkeypatch):
     message = str(exc_info.value)
     assert "session cookie invalid or expired" in message
     assert "REDDIT_SESSION_COOKIE" in message
+
+
+def test_ingest_saved_non_cookie_runtime_error_has_no_cookie_hint(monkeypatch):
+    fake_collection = FakeCollection()
+    monkeypatch.setattr(ingest, "get_collection", lambda: fake_collection)
+
+    def failing_saved_items(limit):
+        raise RuntimeError("Reddit request failed (503) for /user/x/saved.json")
+        yield  # pragma: no cover - unreachable, keeps this a generator function
+
+    monkeypatch.setattr(ingest, "get_saved_items", failing_saved_items)
+    monkeypatch.setattr(ingest, "embed", lambda text: [0.1])
+
+    with pytest.raises(ToolError) as exc_info:
+        ingest.ingest_saved()
+
+    message = str(exc_info.value)
+    assert "Reddit request failed (503)" in message
+    assert "REDDIT_SESSION_COOKIE" not in message

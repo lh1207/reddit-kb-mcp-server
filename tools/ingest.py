@@ -61,7 +61,8 @@ def ingest_saved(
     ~1000 items), skips items already in the index (deduped by id), and embeds and stores
     the rest. Safe to re-run at any time — call this to refresh the local index before
     search_saved if it looks empty or stale. Returns counts of ingested/skipped/errored
-    items. Raises ToolError if the Reddit session cookie is missing or has expired.
+    items. Raises ToolError if the saved listing can't be fetched (e.g. an expired
+    session cookie, or a network/HTTP failure).
     """
     collection = get_collection()
 
@@ -95,7 +96,10 @@ def ingest_saved(
                 )
                 errors += 1
     except RuntimeError as exc:
-        raise ToolError(f"{exc} — refresh REDDIT_SESSION_COOKIE in .env") from exc
+        # Only hint at the cookie for cookie-related failures; fetch_json raises
+        # RuntimeError for network/HTTP/config problems too, where the hint misleads.
+        hint = " — refresh REDDIT_SESSION_COOKIE in .env" if "cookie" in str(exc).lower() else ""
+        raise ToolError(f"ingest_saved failed: {exc}{hint}") from exc
 
     return IngestStats(
         ingested=ingested,
