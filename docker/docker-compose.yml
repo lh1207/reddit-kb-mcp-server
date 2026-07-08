@@ -24,6 +24,11 @@ services:
       # Persistent vector store: survives container restarts and rebuilds.
       - ../store/chroma:/app/store/chroma
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     # Linux convenience: uncomment to make `host.docker.internal` resolve to
     # the host, then set OLLAMA_BASE_URL=http://host.docker.internal:11434.
     # (Docker Desktop / OrbStack on macOS provide this hostname natively.)

@@ -99,8 +99,10 @@ persists on the host across restarts and rebuilds.
 
 ## Connecting an MCP client
 
-The container serves MCP over streamable HTTP at `http://localhost:8000/mcp`.
-Any MCP-compatible client can connect to that endpoint.
+The container serves MCP over streamable HTTP at `http://localhost:8000/mcp`
+(there's also a `GET /health` endpoint for container orchestration liveness
+checks). Any MCP-compatible client can connect to that endpoint; stdio clients
+can run `python server.py` directly instead.
 
 **Claude Code:**
 
@@ -108,7 +110,8 @@ Any MCP-compatible client can connect to that endpoint.
 claude mcp add --transport http reddit-kb http://localhost:8000/mcp
 ```
 
-**Generic client config** (e.g. `mcpServers` in Claude Desktop, Cursor, etc.):
+**Claude Desktop** (and other clients that read a generic `mcpServers` JSON
+block, e.g. Cursor):
 
 ```json
 {
@@ -121,8 +124,34 @@ claude mcp add --transport http reddit-kb http://localhost:8000/mcp
 }
 ```
 
-**stdio (no Docker):** clients that spawn servers themselves can run it
-directly — `python server.py` uses stdio transport by default:
+**Codex CLI** (`~/.codex/config.toml`) — stdio by default:
+
+```toml
+[mcp_servers.reddit-kb]
+command = "/path/to/reddit-kb/.venv/bin/python"
+args = ["/path/to/reddit-kb/server.py"]
+```
+
+Recent Codex releases can also speak to the HTTP endpoint directly:
+
+```toml
+[mcp_servers.reddit-kb]
+url = "http://localhost:8000/mcp"
+```
+
+**Gemini CLI** (`~/.gemini/settings.json`) — HTTP:
+
+```json
+{
+  "mcpServers": {
+    "reddit-kb": {
+      "httpUrl": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+or stdio:
 
 ```json
 {
@@ -135,13 +164,57 @@ directly — `python server.py` uses stdio transport by default:
 }
 ```
 
+**Cursor** (`.cursor/mcp.json`, project-local, or the global equivalent):
+
+```json
+{
+  "mcpServers": {
+    "reddit-kb": {
+      "url": "http://localhost:8000/mcp"
+    }
+  }
+}
+```
+
+## Development
+
+Agent rules live in [`AGENTS.md`](AGENTS.md) (canonical; `CLAUDE.md` and
+`GEMINI.md` are symlinks to it — Windows checkouts need
+`git config core.symlinks true`).
+
+Install dev dependencies (adds `ruff` and `pytest` on top of `requirements.txt`):
+
+```sh
+pip install -r requirements-dev.txt
+```
+
+```sh
+ruff check .           # lint
+ruff format .          # format
+pytest                 # offline test suite — no network, no Ollama, no real Chroma store
+```
+
+Claude Code hooks under `.claude/hooks/` protect `.env`/the session cookie
+from being read or printed, auto-format edited Python files, and re-run
+lint + tests before a session is allowed to stop. Slash commands:
+`/verify` (lint + format-check + tests + an offline server smoke check),
+`/smoke-test` (in-memory MCP client round-trip), and `/add-tool` (scaffold a
+new tool following repo conventions). CI (`.github/workflows/ci.yml`) runs
+the same lint/format/test checks on every push to `main` and every pull
+request.
+
 ## Layout
 
-- `server.py` — FastMCP server; registers the four tools (stdio locally, HTTP in Docker)
+- `server.py` — FastMCP server; registers the four tools (stdio locally, HTTP
+  in Docker) and a `/health` route
 - `lib/reddit.py` — cookie-authenticated old.reddit JSON listing client
 - `lib/embeddings.py` — `embed` / `embed_batch` against the Ollama API
 - `lib/chroma.py` — persistent collection at `CHROMA_PATH`
 - `tools/ingest.py` — saved items → embeddings → ChromaDB
 - `tools/search_saved.py` — query embedding → ChromaDB similarity search
 - `tools/fetch_live.py` — live thread fetch + live Reddit search
+- `tests/` — offline pytest suite (mocks `lib/` boundaries)
 - `docker/` — Dockerfile + compose for the containerised HTTP server
+- `.claude/` — hooks and slash commands for Claude Code (see Development)
+- `AGENTS.md` — canonical agent rules (`CLAUDE.md`/`GEMINI.md` are symlinks)
+- `.github/workflows/` — CI (lint, format-check, tests)

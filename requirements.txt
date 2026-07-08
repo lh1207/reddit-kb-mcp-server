@@ -3,3 +3,5 @@ chromadb
 ollama
 python-dotenv
 requests
+pydantic
+typing_extensions

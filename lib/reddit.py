@@ -20,16 +20,16 @@ _MAX_PAGES = 50
 
 
 def fetch_json(path: str, params: dict | None = None) -> dict:
-    """GET https://old.reddit.com{path} as the logged-in user and return parsed JSON. Authenticates with the reddit_session cookie from REDDIT_SESSION_COOKIE; retries once on failure."""
+    """GET https://old.reddit.com{path} as the logged-in user and return parsed JSON.
+    Authenticates with the reddit_session cookie from REDDIT_SESSION_COOKIE; retries once
+    on failure."""
     from dotenv import load_dotenv
 
     load_dotenv()
 
     missing = [var for var in _REQUIRED_VARS if not os.environ.get(var)]
     if missing:
-        raise RuntimeError(
-            "Missing required environment variables: " + ", ".join(missing)
-        )
+        raise RuntimeError("Missing required environment variables: " + ", ".join(missing))
 
     import requests
 
@@ -45,9 +45,7 @@ def fetch_json(path: str, params: dict | None = None) -> dict:
         if attempt:
             time.sleep(_RETRY_DELAY)
         try:
-            response = requests.get(
-                url, params=merged_params, headers=headers, timeout=_TIMEOUT
-            )
+            response = requests.get(url, params=merged_params, headers=headers, timeout=_TIMEOUT)
         except requests.RequestException:
             # Deliberately not chained/interpolated: the request (and any
             # exception repr) carries the session cookie.
@@ -61,7 +59,9 @@ def fetch_json(path: str, params: dict | None = None) -> dict:
 
 
 def get_saved_items(limit: int | None = None) -> Iterator[dict]:
-    """Yield the user's saved items (raw {"kind", "data"} children) from /user/<REDDIT_USERNAME>/saved.json, newest first, paging until exhausted or `limit` items."""
+    """Yield the user's saved items (raw {"kind", "data"} children) from
+    /user/<REDDIT_USERNAME>/saved.json, newest first, paging until exhausted or `limit`
+    items."""
     from dotenv import load_dotenv
 
     load_dotenv()

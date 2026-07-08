@@ -11,7 +11,8 @@ def embed(text: str) -> list[float]:
 
 
 def embed_batch(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of texts with EMBED_MODEL via OLLAMA_BASE_URL and return their vectors, one per input, order preserved."""
+    """Embed a batch of texts with EMBED_MODEL via OLLAMA_BASE_URL and return their vectors,
+    one per input, order preserved."""
     if not texts:
         return []
 
@@ -28,8 +29,7 @@ def embed_batch(texts: list[str]) -> list[list[float]]:
             vectors = [list(v) for v in response.embeddings]
         else:
             vectors = [
-                list(client.embeddings(model=model, prompt=text)["embedding"])
-                for text in texts
+                list(client.embeddings(model=model, prompt=text)["embedding"]) for text in texts
             ]
     except ollama.ResponseError as exc:
         if exc.status_code == 404:
